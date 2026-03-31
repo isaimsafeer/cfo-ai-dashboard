@@ -25,6 +25,18 @@ import type { GeminiToolDeclaration } from "@/lib/ai/gemini";
 
 const MAX_ANOMALY_ITEMS = 10;
 
+// ─── Expense row shape returned by getExpenseRowsByProjectsInRange ────────────
+// Add / remove fields here if the service query changes.
+interface ExpenseRow {
+  expenseId: string;
+  projectId: string;
+  amount: number;
+  dateIso: string;
+  expenseType: string;
+  technicianId: string | null;
+  description: string | null;
+}
+
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -307,7 +319,13 @@ export async function executeTool(toolName: ToolName, args: unknown): Promise<un
       const end = new Date();
       const start = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
       const range = { startDate: isoDate(start), endDate: isoDate(end) };
-      const expenseRows = await getExpenseRowsByProjectsInRange(supabaseAdminClient, projectIds, range);
+
+      // Cast to ExpenseRow[] so TypeScript knows about the `description` field.
+      const expenseRows = (await getExpenseRowsByProjectsInRange(
+        supabaseAdminClient,
+        projectIds,
+        range,
+      )) as ExpenseRow[];
 
       const anomalies: ExpenseAnomaly[] = [];
 
@@ -533,4 +551,3 @@ export async function executeTool(toolName: ToolName, args: unknown): Promise<un
       throw new Error(`Unsupported tool: ${toolName}`);
   }
 }
-

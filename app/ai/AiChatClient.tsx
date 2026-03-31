@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useDashboardOrganizations } from "@/hooks/useDashboardOrganizations";
 import { useAiChat } from "@/hooks/useAiChat";
 import { useSearchParams } from "next/navigation";
@@ -10,7 +10,10 @@ function formatMessageRole(role: string) {
   return role === "user" ? "You" : "AI CFO";
 }
 
-export default function AiChatClient() {
+// ─── Inner component that uses useSearchParams ────────────────────────────────
+// Must be wrapped in <Suspense> because useSearchParams() opts into
+// dynamic rendering and Next.js requires a boundary during prerendering.
+function AiChatInner() {
   const { organizations, loading: orgsLoading, error: orgsError } = useDashboardOrganizations();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const { messages, send, loading, error, setMessages } = useAiChat(selectedOrgId);
@@ -140,7 +143,7 @@ export default function AiChatClient() {
               <div className="max-h-[55vh] flex-1 overflow-y-auto px-5 py-6">
                 {messages.length === 0 ? (
                   <div className="text-sm text-zinc-400">
-                    Try: <span className="font-medium text-zinc-200">“What is our burn rate?”</span>
+                    Try: <span className="font-medium text-zinc-200">"What is our burn rate?"</span>
                   </div>
                 ) : null}
 
@@ -222,3 +225,20 @@ export default function AiChatClient() {
   );
 }
 
+// ─── Loading skeleton shown while AiChatInner resolves searchParams ───────────
+function AiChatSkeleton() {
+  return (
+    <div className="min-h-screen w-full bg-[#07090c] text-zinc-100 font-sans flex items-center justify-center">
+      <div className="text-sm text-zinc-500 animate-pulse">Loading…</div>
+    </div>
+  );
+}
+
+// ─── Default export wraps the inner component in the required Suspense boundary
+export default function AiChatClient() {
+  return (
+    <Suspense fallback={<AiChatSkeleton />}>
+      <AiChatInner />
+    </Suspense>
+  );
+}
